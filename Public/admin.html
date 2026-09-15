@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Key Admin</title>
+<style>
+body{margin:0;background:#0b1020;color:#fff;font-family:Arial;padding:25px}
+.wrap{max-width:900px;margin:auto}.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+input,button{padding:11px;border-radius:9px;border:1px solid #34415f}input{background:#111a2d;color:#fff}button{cursor:pointer}
+table{width:100%;margin-top:20px;border-collapse:collapse;background:#121a2d}th,td{padding:12px;border-bottom:1px solid #26304b;text-align:left}
+.bad{color:#ff8f8f}.good{color:#6ee7a8}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Key Admin Panel</h1>
+<div class="bar">
+<input id="pass" type="password" placeholder="Admin password">
+<input id="days" type="number" min="1" max="3650" value="30">
+<button onclick="createKey()">Generate Key</button>
+<button onclick="loadKeys()">Refresh</button>
+</div>
+<p id="msg"></p>
+<table><thead><tr><th>Key ID</th><th>Created</th><th>Expires</th><th>Status</th><th></th></tr></thead><tbody id="rows"></tbody></table>
+</div>
+<script>
+const H=()=>({"x-admin-password":document.getElementById("pass").value});
+async function createKey(){
+ const r=await fetch("/api/keys",{method:"POST",headers:{...H(),"Content-Type":"application/json"},body:JSON.stringify({days:+document.getElementById("days").value})});
+ const d=await r.json(); document.getElementById("msg").textContent=d.key?`New key: ${d.key}`:(d.error||"Error"); loadKeys();
+}
+async function loadKeys(){
+ const r=await fetch("/api/keys",{headers:H()}); const d=await r.json();
+ if(!r.ok){document.getElementById("rows").innerHTML="";return}
+ document.getElementById("rows").innerHTML=d.map(x=>`<tr><td>${x.id.slice(0,8)}...</td><td>${new Date(x.createdAt).toLocaleString()}</td><td>${new Date(x.expiresAt).toLocaleString()}</td><td class="${x.revoked?'bad':'good'}">${x.revoked?'Revoked':'Active'}</td><td>${x.revoked?'':`<button onclick="revoke('${x.id}')">Revoke</button>`}</td></tr>`).join("");
+}
+async function revoke(id){await fetch("/api/keys/"+id,{method:"DELETE",headers:H()});loadKeys();}
+</script>
+</body>
+</html>
